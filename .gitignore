@@ -1,0 +1,14 @@
+venv/
+backend/venv/
+__pycache__/
+*.pyc
+.env
+
+# AI models
+Model_IA/
+*.pt
+*.pth
+*.pkl
+
+# database
+*.dbs
