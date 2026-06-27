@@ -454,3 +454,26 @@ async def reset_password(
     return {
         "message": "Password reset successful. You can now log in with your new password.",
     }
+
+
+# ── POST /test-email  (dev only) ──────────────────────────────────────────────
+@router.post(
+    "/test-email",
+    summary="[DEV] Send a test OTP email to verify SMTP configuration",
+    include_in_schema=settings.debug,   # hidden in production
+)
+async def test_email(email: str) -> dict:
+    """
+    Sends a dummy OTP code to the given email address.
+    Use this to verify your SMTP credentials before testing the full auth flow.
+    Only available when DEBUG=true.
+    """
+    if not settings.debug:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Not found.")
+
+    await send_otp_email(email=email, code="123456", purpose="login")
+    return {
+        "message": f"Test email dispatched to {email}. Check your inbox (or backend console if SMTP is not configured).",
+        "smtp_configured": bool(settings.smtp_username and settings.smtp_password),
+    }
+
