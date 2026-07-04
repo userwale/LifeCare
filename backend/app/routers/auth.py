@@ -222,14 +222,32 @@ async def login(
             detail="Your email is not verified. A verification code has been sent to your email.",
         )
 
-    # 4. Generate and send Login OTP
-    await create_and_send_otp(db, user, OTPPurpose.login)
+    # 4. Role-based Login Flow (Admins get 2FA OTP, standard users login directly)
+    if user.role == UserRole.admin:
+        await create_and_send_otp(db, user, OTPPurpose.login)
+        return {
+            "status": "otp_sent",
+            "email": user.email,
+            "message": "A verification code has been sent to your email.",
+        }
 
+    # Standard User: login directly (bypassing OTP)
+    access_token = create_access_token(
+        data={"sub": user.username, "role": user.role.value}
+    )
     return {
-        "status": "otp_sent",
-        "email": user.email,
-        "message": "A verification code has been sent to your email.",
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "username": user.username,
+            "email": user.email,
+            "role": user.role.value,
+            "is_verified": user.is_verified,
+            "created_at": user.created_at.isoformat() if hasattr(user.created_at, "isoformat") else user.created_at,
+        },
     }
+
 
 
 # ── POST /verify-login ───────────────────────────────────────────────────────

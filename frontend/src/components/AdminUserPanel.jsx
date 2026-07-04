@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 
-const API_BASE_URL = 'http://localhost:8000/api/v1/users'
+const API_BASE_URL = '/api/v1/users'
 
 export default function AdminUserPanel({ token }) {
   const [users, setUsers] = useState([])

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react'
 
-const API_BASE_URL = 'http://localhost:8000/api/v1/auth'
+const API_BASE_URL = '/api/v1/auth'
 
 export default function Auth({ onLoginSuccess, onCancel }) {
   // Views: 'login' | 'register' | 'login_otp' | 'register_otp' | 'forgot_password' | 'reset_password'
@@ -103,11 +103,15 @@ export default function Auth({ onLoginSuccess, onCancel }) {
         setEmail(res.email)
         setSuccess('Password verified! A 2FA code has been sent to your email.')
         setView('login_otp')
+      } else if (res.access_token) {
+        setSuccess('Logged in successfully!')
+        onLoginSuccess(res)
       }
     } catch (err) {
       handleError(err)
     }
   }
+
 
   // 2. Verify Login OTP
   const handleVerifyLoginSubmit = async (e) => {

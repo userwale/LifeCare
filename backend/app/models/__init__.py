@@ -3,4 +3,6 @@
 
 from app.models.user import User, UserRole  # noqa: F401
 from app.models.otp import OTPCode, OTPPurpose  # noqa: F401
+from app.models.posture import PostureRecord  # noqa: F401
+
 

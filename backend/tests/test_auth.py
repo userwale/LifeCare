@@ -101,32 +101,9 @@ async def test_complete_auth_flow():
         response = await client.post("/api/v1/auth/login", json=login_payload)
         assert response.status_code == 401
 
-        # ── 7. Login with correct credentials (should prompt OTP) ──
+        # ── 7. Login with correct credentials (should login directly since role is user) ──
         login_payload["password"] = password
         response = await client.post("/api/v1/auth/login", json=login_payload)
-        assert response.status_code == 200
-        data = response.json()
-        assert data["status"] == "otp_sent"
-        assert data["email"] == email
-
-        # Retrieve login OTP code from DB
-        async with AsyncSessionLocal() as session:
-            otp_res = await session.execute(
-                select(OTPCode)
-                .where(OTPCode.user_id == user.id)
-                .where(OTPCode.purpose == OTPPurpose.login)
-                .where(OTPCode.is_used == False)
-            )
-            otp_record = otp_res.scalar_one_or_none()
-            assert otp_record is not None
-            login_otp_code = otp_record.code
-
-        # ── 8. Verify login with valid OTP ──
-        verify_login_payload = {
-            "email": email,
-            "code": login_otp_code
-        }
-        response = await client.post("/api/v1/auth/verify-login", json=verify_login_payload)
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
@@ -169,11 +146,11 @@ async def test_complete_auth_flow():
         assert response.status_code == 200
         assert "Password reset successful" in response.json()["message"]
 
-        # ── 13. Login with new password ──
+        # ── 13. Login with new password (should login directly since role is user) ──
         login_payload["password"] = new_password
         response = await client.post("/api/v1/auth/login", json=login_payload)
         assert response.status_code == 200
-        assert response.json()["status"] == "otp_sent"
+        assert "access_token" in response.json()
 
 
 @pytest.mark.asyncio
@@ -226,3 +203,45 @@ async def test_admin_bypass_and_authorization():
         norm_headers = {"Authorization": f"Bearer {norm_token}"}
         response = await client.get("/api/v1/users/", headers=norm_headers)
         assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_admin_login_otp_flow():
+    async with AsyncClient(
+        transport=ASGITransport(app=app), base_url="http://test"
+    ) as client:
+        # ── 1. Login admin via normal login flow (should prompt OTP/2FA) ──
+        login_payload = {
+            "username_or_email": settings.admin_email,
+            "password": settings.admin_password
+        }
+        response = await client.post("/api/v1/auth/login", json=login_payload)
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "otp_sent"
+        assert data["email"] == settings.admin_email
+
+        # Retrieve login OTP code from DB
+        async with AsyncSessionLocal() as session:
+            admin_res = await session.execute(select(User).where(User.email == settings.admin_email))
+            admin_user = admin_res.scalar_one()
+            otp_res = await session.execute(
+                select(OTPCode)
+                .where(OTPCode.user_id == admin_user.id)
+                .where(OTPCode.purpose == OTPPurpose.login)
+                .where(OTPCode.is_used == False)
+            )
+            otp_record = otp_res.scalars().first()
+            assert otp_record is not None
+            admin_otp = otp_record.code
+
+        # ── 2. Verify admin login with correct OTP ──
+        response = await client.post("/api/v1/auth/verify-login", json={
+            "email": settings.admin_email,
+            "code": admin_otp
+        })
+        assert response.status_code == 200
+        data = response.json()
+        assert "access_token" in data
+        assert data["user"]["role"] == "admin"
+

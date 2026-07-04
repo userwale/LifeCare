@@ -83,6 +83,13 @@ class User(Base):
         cascade="all, delete-orphan",
     )
 
+    posture_records: Mapped[list[PostureRecord]] = relationship(
+        "PostureRecord",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
+
     # ── helpers ───────────────────────────────────────────────────────────────
     def __repr__(self) -> str:
         return f"<User id={self.id} username={self.username!r} role={self.role} is_verified={self.is_verified}>"

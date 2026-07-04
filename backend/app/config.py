@@ -41,7 +41,10 @@ class Settings(BaseSettings):
 
     @property
     def cors_origins(self) -> List[str]:
-        return [o.strip() for o in self.allowed_origins.split(",") if o.strip()]
+        # Strip quotes if defined with quotes in the .env file
+        raw = self.allowed_origins.strip().strip('"').strip("'")
+        return [o.strip().strip('"').strip("'") for o in raw.split(",") if o.strip()]
+
 
     # ── Database ─────────────────────────────────────────────────────────────
     database_url: str = "sqlite+aiosqlite:///./lifecare.db"
